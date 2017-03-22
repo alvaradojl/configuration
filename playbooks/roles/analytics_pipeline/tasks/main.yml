@@ -127,21 +127,54 @@
     - install
     - install:app-requirements
 
-- name: Ensure hdfs services are started
-  service:
-    name: hdfs
-    state: started
-  tags:
-    - manage
-    - manage:start
+# - name: Ensure hdfs services are started
+#   service:
+#     name: hdfs
+#     state: started
+#   tags:
+#     - manage
+#     - manage:start
 
-- name: Ensure map reduce services are started
-  service:
-    name: yarn
-    state: started
+# - name: Ensure map reduce services are started
+#   service:
+#     name: yarn
+#     state: started
+#   tags:
+#     - manage
+#     - manage:start
+
+- name: reload systemd configuration
+  command: systemctl daemon-reload
   tags:
-    - manage
+    - install
+    - install:configuration
+
+- name: enable Hadoop services
+  service:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  with_items: "{{ hadoop_common_services }}"
+  tags:
+    - install
+    - install:configuration
+
+- name: stop Hadoop services
+  service:
+    name: "{{ item }}"
+    state: stopped
+  with_items: "{{ hadoop_common_services }}"
+  tags:
+    - manage:stop
+
+- name: restart Hadoop services
+  service:
+    name: "{{ item }}"
+    state: restarted
+  with_items: "{{ hadoop_common_services }}"
+  tags:
     - manage:start
+    - manage:restart
 
 - name: Ensure package dir exists in HDFS
   shell: ". {{ HADOOP_COMMON_CONF_DIR }}/hadoop-env.sh && hdfs dfs -mkdir -p /edx-analytics-pipeline/packages/"
@@ -156,6 +189,10 @@
   tags:
     - install
     - install:app-requirements
+  register: libcp
+  until: libcp|success
+  retries: 6
+  delay: 10
 
 - name: Ensure the data directory exists
   shell: ". {{ HADOOP_COMMON_CONF_DIR }}/hadoop-env.sh && hdfs dfs -mkdir -p {{ ANALYTICS_PIPELINE_HDFS_DATA_DIR }}"

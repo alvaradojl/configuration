@@ -108,16 +108,17 @@
     - hdfs-site.xml
     - yarn-site.xml
 
-- name: upstart scripts installed
+- name: service definitions installed
   template:
-    src: "{{ item }}.j2"
-    dest: "/etc/init/{{ item }}"
+    src: "{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service"
     mode: 0640
     owner: root
     group: root
-  with_items:
-    - hdfs.conf
-    - yarn.conf
+  with_items: "{{ hadoop_common_services }}"
+  tags:
+    - install
+    - install:configuration
 
 - name: hadoop env file exists
   file:
