@@ -37,8 +37,35 @@ server {
   {% endif %}
 
   location ~ ^/static/(?P<file>.*) {
-    root {{ COMMON_DATA_DIR }}/{{ edx_django_service_name }};
-    try_files /staticfiles/$file =404;
+    root {{ COMMON_DATA_DIR }}/{{ edx_django_service_name }}/staticfiles;
+    add_header Cache-Control "max-age=31536000";
+
+    # NOTE (CCB): We have invested *numerous* man-hours in attempting to provide a properly-secured CORS implementation.
+    # Unfortunately, our efforts have only resulted in a lot of frustration, failure, and new knowledge. For now,
+    # given the low risk of exposing these files, we will move forward with the insecure option.
+    #
+    # References for future explorers:
+    # * https://www.nginx.com/resources/wiki/start/topics/depth/ifisevil/
+    # * https://enable-cors.org/server_nginx.html
+    # * http://stackoverflow.com/questions/27955233/nginx-config-for-cors-add-header-directive-is-not-allowed/41467679
+    #
+    add_header 'Access-Control-Allow-Origin' '*';
+    add_header 'Access-Control-Allow-Methods' 'GET, OPTIONS';
+    add_header 'Access-Control-Allow-Headers' 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range';
+
+    if ($request_method = 'OPTIONS') {
+    add_header 'Access-Control-Allow-Origin' '*';
+    add_header 'Access-Control-Allow-Methods' 'GET, OPTIONS';
+    add_header 'Access-Control-Allow-Headers' 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range';
+
+    # Tell client that this pre-flight info is valid for 20 days
+    add_header 'Access-Control-Max-Age' 1728000;
+    add_header 'Content-Type' 'text/plain charset=UTF-8';
+    add_header 'Content-Length' 0;
+    return 204;
+    }
+
+    try_files /$file =404;
   }
 
   location ~ ^/media/(?P<file>.*) {
